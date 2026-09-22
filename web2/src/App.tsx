@@ -20,10 +20,10 @@ import Profile from "./pages/Profile";
 function Root() {
   return (
     <AppProvider>
-      <div style={{ height: "100%", background: "#080812", position: "relative" }}>
+      <div style={{ minHeight: "100dvh", background: "#080812", position: "relative", display: "flex", flexDirection: "column" }}>
         <Navbar />
-        {/* Each page manages its own height as calc(100vh - 64px) */}
-        <div style={{ paddingTop: 64, height: "100%" }}>
+        {/* Each page manages its own height as calc(100dvh - 64px) */}
+        <div style={{ paddingTop: 64, flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
           <Outlet />
         </div>
         <ToastContainer />

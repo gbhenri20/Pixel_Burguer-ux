@@ -127,12 +127,36 @@ const AppContext = createContext<AppContextType | null>(null);
 
 const DELIVERY_FEE = 5.99;
 
+const EMPTY_CART: CartState = { items: [], coupon: null, discount: 0 };
+
+function isValidCartItem(item: unknown): item is CartItem {
+  if (!item || typeof item !== "object") return false;
+  const cartItem = item as CartItem;
+  return (
+    typeof cartItem.quantity === "number" &&
+    cartItem.quantity > 0 &&
+    !!cartItem.product &&
+    typeof cartItem.product.id === "string" &&
+    typeof cartItem.product.price === "number" &&
+    typeof cartItem.product.name === "string"
+  );
+}
+
 function loadCart(): CartState {
   try {
     const saved = localStorage.getItem("pixel_cart");
-    return saved ? JSON.parse(saved) : { items: [], coupon: null, discount: 0 };
+    if (!saved) return EMPTY_CART;
+
+    const parsed = JSON.parse(saved) as Partial<CartState>;
+    if (!parsed || !Array.isArray(parsed.items)) return EMPTY_CART;
+
+    return {
+      items: parsed.items.filter(isValidCartItem),
+      coupon: typeof parsed.coupon === "string" ? parsed.coupon : null,
+      discount: typeof parsed.discount === "number" ? parsed.discount : 0,
+    };
   } catch {
-    return { items: [], coupon: null, discount: 0 };
+    return EMPTY_CART;
   }
 }
 

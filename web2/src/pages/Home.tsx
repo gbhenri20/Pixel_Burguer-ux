@@ -6,7 +6,9 @@ import ProductModal from "../components/ProductModal";
 import { useApp } from "../contexts/AppContext";
 import type { Product } from "../data/products";
 
-const houseSpecial = products.find(p => p.id === HOUSE_SPECIAL_ID)!;
+const houseSpecial =
+  products.find(p => p.id === HOUSE_SPECIAL_ID) ??
+  products[0];
 
 /* ── Section 1: Hero ── */
 function HeroSection() {
@@ -280,8 +282,16 @@ function PromoSection() {
 }
 
 export default function Home() {
+  if (!houseSpecial) {
+    return (
+      <div className="page-scroll flex items-center justify-center p-6" style={{ flex: 1, minHeight: "calc(100dvh - 64px)" }}>
+        <p className="text-slate-400 text-sm">Não foi possível carregar o cardápio. Recarregue a página.</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="snap-container" style={{ height: "100%" }}>
+    <div className="snap-container" style={{ flex: 1, minHeight: 0, height: "100%" }}>
       <HeroSection />
       <HouseSpecialSection />
       <FeaturedSection />
