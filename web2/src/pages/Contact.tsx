@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { request } from "../api/client";
 import { useApp } from "../contexts/AppContext";
 
 export default function Contact() {
@@ -6,10 +7,23 @@ export default function Contact() {
   const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
   const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [sending, setSending] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    showToast("Mensagem enviada! Entraremos em contato em breve. 📩");
-    setForm({ name: "", email: "", subject: "", message: "" });
+    setSending(true);
+    try {
+      await request("/messages", {
+        method: "POST",
+        body: JSON.stringify(form),
+      });
+      showToast("Mensagem enviada! Entraremos em contato em breve. 📩");
+      setForm({ name: "", email: "", subject: "", message: "" });
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Não foi possível enviar a mensagem.", "error");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -76,7 +90,7 @@ export default function Contact() {
                     <input required value={form.subject} onChange={e => set("subject", e.target.value)} placeholder="Como podemos ajudar?" /></div>
                   <div><label className="block text-xs font-display text-slate-400 mb-1">Mensagem</label>
                     <textarea required rows={4} value={form.message} onChange={e => set("message", e.target.value)} placeholder="Descreva sua mensagem..." /></div>
-                  <button type="submit" className="btn-primary w-full py-2.5 text-sm">
+                  <button type="submit" disabled={sending} className="btn-primary w-full py-2.5 text-sm disabled:opacity-40">
                     Enviar Mensagem →
                   </button>
                 </form>

@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  KITCHEN
+  ADMIN
+}
+
+enum DeliveryType {
+  DELIVERY
+  PICKUP
+}
+
+enum PaymentMethod {
+  PIX
+  CARD
+  CASH
+}
+
+enum OrderStatus {
+  RECEIVED
+  PREPARING
+  READY
+  ON_THE_WAY
+  DELIVERED
+  CANCELLED
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  phone        String
+  passwordHash String
+  role         Role      @default(CUSTOMER)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  addresses    Address[]
+  cart         Cart?
+  orders       Order[]
+}
+
+model Address {
+  id           String  @id @default(cuid())
+  userId       String
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label        String  @default("Casa")
+  cep          String
+  street       String
+  number       String
+  complement   String  @default("")
+  neighborhood String
+  city         String
+  isPrimary    Boolean @default(false)
+}
+
+model Product {
+  id                 String     @id
+  name               String
+  category           String
+  description        String
+  ingredients        String
+  price              Float
+  image              String
+  rating             Float      @default(0)
+  reviews            Int        @default(0)
+  featured           Boolean    @default(false)
+  popular            Boolean    @default(false)
+  isNew              Boolean    @default(false)
+  active             Boolean    @default(true)
+  stock              Int        @default(100)
+  promoOriginalPrice Float?
+  promoDiscount      Int?
+  cartItems          CartItem[]
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+}
+
+model Coupon {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  discountPercent Int
+  active          Boolean   @default(true)
+  minSubtotal     Float     @default(0)
+  maxUses         Int?
+  usedCount       Int       @default(0)
+  expiresAt       DateTime?
+  carts           Cart[]
+  createdAt       DateTime  @default(now())
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String?    @unique
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId String?    @unique
+  couponId  String?
+  coupon    Coupon?    @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  items     CartItem[]
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String  @id @default(cuid())
+  cartId    String
+  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int
+
+  @@unique([cartId, productId])
+}
+
+model Order {
+  id               String        @id @default(cuid())
+  code             String        @unique
+  userId           String?
+  user             User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  customerName     String
+  customerEmail    String
+  customerPhone    String
+  deliveryType     DeliveryType
+  address          String
+  paymentMethod    PaymentMethod
+  status           OrderStatus   @default(RECEIVED)
+  subtotal         Float
+  discountPercent  Int           @default(0)
+  discountAmount   Float
+  deliveryFee      Float
+  total            Float
+  couponCode       String?
+  estimatedMinutes Int
+  items            OrderItem[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+}
+
+model OrderItem {
+  id        String @id @default(cuid())
+  orderId   String
+  order     Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  name      String
+  price     Float
+  quantity  Int
+  image     String
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String
+  message   String
+  createdAt DateTime @default(now())
+}

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pixel Burguer — Lean Canvas</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+    :root {
+      --ink: #1a1424; --muted: #5c5470; --line: #e4dde8; --soft: #f3eef6;
+      --pink: #e60063; --cyan: #0099b3; --purple: #7c3aed;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    @page { size: A4 landscape; margin: 10mm; }
+    body {
+      font-family: 'IBM Plex Sans', system-ui, sans-serif;
+      background: #f7f5f8; color: var(--ink); font-size: 10px; line-height: 1.4;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .wrap { max-width: 1100px; margin: 20px auto; padding: 0 12px 32px; }
+    @media print { body { background: #fff; } .wrap { margin: 0; max-width: none; } .no-print { display: none !important; } }
+    .head {
+      background: linear-gradient(135deg, #120a18, #2a1240);
+      color: #fff; border-radius: 12px; padding: 22px 24px; margin-bottom: 14px;
+      position: relative; overflow: hidden;
+    }
+    .head::after {
+      content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+      background: linear-gradient(90deg, var(--pink), #a855f7, var(--cyan));
+    }
+    .head .ey { font-family: Outfit, sans-serif; font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: #f472b6; font-weight: 600; }
+    .head h1 { font-family: Outfit, sans-serif; font-size: 26px; font-weight: 800; margin: 6px 0 4px; }
+    .head h1 span { color: #22d3ee; }
+    .head p { color: #c4b8d4; max-width: 560px; font-size: 11px; }
+    .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+    .toolbar button, .toolbar a {
+      font-family: Outfit, sans-serif; font-weight: 600; font-size: 11px;
+      border: none; border-radius: 8px; padding: 7px 12px; cursor: pointer; text-decoration: none; color: #fff; background: var(--pink);
+    }
+    .toolbar a.ghost { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+    .canvas {
+      display: grid;
+      grid-template-columns: 1.1fr 1.1fr 1.2fr 1.1fr 1.1fr;
+      grid-template-rows: auto auto auto;
+      gap: 8px;
+      background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px;
+    }
+    .cell {
+      border: 1px solid var(--line); border-radius: 10px; padding: 10px;
+      background: #faf8fc; min-height: 120px;
+    }
+    .cell h3 {
+      font-family: Outfit, sans-serif; font-size: 10px; font-weight: 700;
+      letter-spacing: .04em; text-transform: uppercase; margin-bottom: 6px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .cell h3 .n {
+      width: 16px; height: 16px; border-radius: 5px; background: var(--soft);
+      color: var(--pink); display: inline-flex; align-items: center; justify-content: center; font-size: 9px;
+    }
+    .cell ul { padding-left: 14px; color: #2d2740; }
+    .cell li { margin-bottom: 3px; }
+    .cell.uvp { background: linear-gradient(160deg, #fff0f6, #f5f3ff); border-color: #f9a8d4; grid-row: span 2; }
+    .cell.uvp .pitch {
+      font-family: Outfit, sans-serif; font-weight: 700; font-size: 13px; color: var(--ink); margin: 6px 0;
+    }
+    .cell.uvp .concept { font-size: 10px; color: var(--muted); font-style: italic; }
+    .p { grid-column: 1; grid-row: 1; }
+    .s { grid-column: 2; grid-row: 1; }
+    .u { grid-column: 3; grid-row: 1 / span 2; }
+    .adv { grid-column: 4; grid-row: 1; }
+    .ch { grid-column: 5; grid-row: 1; }
+    .seg { grid-column: 1; grid-row: 2; }
+    .sol { grid-column: 2; grid-row: 2; }
+    .met { grid-column: 4; grid-row: 2; }
+    .rev { grid-column: 5; grid-row: 2; }
+    .cost { grid-column: 1 / span 3; grid-row: 3; min-height: 80px; }
+    .kpi { grid-column: 4 / span 2; grid-row: 3; min-height: 80px; }
+    .note { margin-top: 12px; font-size: 10px; color: var(--muted); }
+    @media (max-width: 900px) {
+      .canvas { grid-template-columns: 1fr; }
+      .cell.uvp, .p, .s, .u, .adv, .ch, .seg, .sol, .met, .rev, .cost, .kpi {
+        grid-column: auto; grid-row: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="head">
+      <div class="ey">Lean Canvas · Modelo de negócio</div>
+      <h1>Pixel <span>Burguer</span></h1>
+      <p>Pedido online com identidade gamer/arcade — do cardápio ao acompanhamento do pedido.</p>
+    </header>
+    <div class="toolbar no-print">
+      <button type="button" onclick="window.print()">Imprimir / Salvar PDF</button>
+      <a class="ghost" href="LEAN-CANVAS.md">Markdown</a>
+      <a class="ghost" href="EAP.md">EAP</a>
+      <a class="ghost" href="BPMN.html">BPMN</a>
+    </div>
+    <div class="canvas">
+      <section class="cell p">
+        <h3><span class="n">1</span> Problema</h3>
+        <ul>
+          <li>Sites de lanchonete genéricos e frios</li>
+          <li>Pedido confuso no celular</li>
+          <li>Falta de feedback do status do pedido</li>
+        </ul>
+      </section>
+      <section class="cell s">
+        <h3><span class="n">4</span> Solução</h3>
+        <ul>
+          <li>Cardápio + combos + promoções</li>
+          <li>Carrinho, cupons e checkout em 4 etapas</li>
+          <li>Confirmação e tracking (MVP simulado)</li>
+        </ul>
+      </section>
+      <section class="cell uvp u">
+        <h3><span class="n">3</span> Proposta única de valor</h3>
+        <p class="pitch">“Seu próximo nível de sabor”</p>
+        <p>Pedir burger com a vibe de um jogo: rápido, visual e memorável.</p>
+        <p class="concept" style="margin-top:10px">High-level: lanchonete real + cultura gamer</p>
+      </section>
+      <section class="cell adv">
+        <h3><span class="n">9</span> Vantagem injusta</h3>
+        <ul>
+          <li>Marca + UX Pixel Burguer</li>
+          <li>Tom de voz e cardápio temáticos</li>
+          <li>(Futuro) dados + operação integrada</li>
+        </ul>
+      </section>
+      <section class="cell ch">
+        <h3><span class="n">5</span> Canais</h3>
+        <ul>
+          <li>Site próprio (React/Vite)</li>
+          <li>Redes / indicação</li>
+          <li>WhatsApp / busca local (futuro)</li>
+        </ul>
+      </section>
+      <section class="cell seg">
+        <h3><span class="n">2</span> Segmentos</h3>
+        <ul>
+          <li>16–35 delivery + cultura gamer</li>
+          <li>Grupos / noite de jogo</li>
+          <li>Early: comunidade local + loja física</li>
+        </ul>
+      </section>
+      <section class="cell sol">
+        <h3><span class="n">4b</span> MVP → Visão</h3>
+        <ul>
+          <li><strong>Agora:</strong> front completo mock</li>
+          <li><strong>Depois:</strong> API, auth, pagamento, cozinha</li>
+        </ul>
+      </section>
+      <section class="cell met">
+        <h3><span class="n">8</span> Métricas-chave</h3>
+        <ul>
+          <li>Conversão visita → checkout</li>
+          <li>Abandono de carrinho</li>
+          <li>Ticket médio / uso de cupom</li>
+        </ul>
+      </section>
+      <section class="cell rev">
+        <h3><span class="n">6</span> Receita</h3>
+        <ul>
+          <li>Venda de itens e combos</li>
+          <li>Taxa de entrega</li>
+          <li>Campanhas sazonais (futuro)</li>
+        </ul>
+      </section>
+      <section class="cell cost">
+        <h3><span class="n">7</span> Estrutura de custos</h3>
+        <ul>
+          <li>Hosting, domínio, manutenção do produto</li>
+          <li>Marketing e cupons</li>
+          <li>(Futuro) gateway de pagamento, SMS/e-mail, anúncios</li>
+        </ul>
+      </section>
+      <section class="cell kpi">
+        <h3><span class="n">✓</span> Hipóteses a validar</h3>
+        <ul>
+          <li>Estética gamer aumenta conversão</li>
+          <li>Checkout em 4 etapas reduz confusão</li>
+          <li>Tracking reduz suporte via WhatsApp</li>
+        </ul>
+      </section>
+    </div>
+    <p class="note">Pixel Burguer · Lean Canvas 1.0 · Ver detalhamento em LEAN-CANVAS.md</p>
+  </div>
+</body>
+</html>

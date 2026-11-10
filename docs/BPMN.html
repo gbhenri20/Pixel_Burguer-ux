@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pixel Burguer — BPMN e Processos</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+    :root {
+      --bg: #f7f5f8;
+      --ink: #1a1424;
+      --muted: #5c5470;
+      --card: #ffffff;
+      --pink: #e60063;
+      --cyan: #0099b3;
+      --line: #e4dde8;
+      --soft: #f0ebf3;
+      --success: #1a7a3c;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    @page {
+      size: A4;
+      margin: 14mm 14mm 16mm 14mm;
+    }
+
+    body {
+      font-family: 'IBM Plex Sans', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.55;
+      font-size: 11pt;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .page {
+      max-width: 210mm;
+      margin: 24px auto;
+      background: var(--card);
+      box-shadow: 0 12px 40px rgba(26, 20, 36, 0.08);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    @media print {
+      body { background: white; }
+      .page {
+        margin: 0;
+        box-shadow: none;
+        border-radius: 0;
+        max-width: none;
+      }
+      .no-print { display: none !important; }
+      .break { break-before: page; page-break-before: always; }
+      a { color: inherit; text-decoration: none; }
+    }
+
+    /* Cover */
+    .cover {
+      background: linear-gradient(145deg, #120a18 0%, #1c1030 45%, #2a1240 100%);
+      color: #fff;
+      padding: 48px 40px 40px;
+      position: relative;
+      min-height: 280px;
+    }
+    .cover::after {
+      content: '';
+      position: absolute;
+      inset: auto 0 0 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--pink), #a855f7, var(--cyan));
+    }
+    .eyebrow {
+      font-family: 'Outfit', sans-serif;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #f472b6;
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+    .cover h1 {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      font-size: 36px;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+    }
+    .cover h1 span { color: #22d3ee; }
+    .cover .lead {
+      color: #c4b8d4;
+      max-width: 420px;
+      font-size: 13px;
+      margin-bottom: 28px;
+    }
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .chip {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: 11px;
+      color: #e9e0f0;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 14px 24px;
+      background: #fff8fb;
+      border-bottom: 1px solid var(--line);
+      font-size: 12px;
+      color: var(--muted);
+      align-items: center;
+    }
+    .toolbar button, .toolbar a.btn {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      font-size: 12px;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-primary { background: var(--pink); color: white; }
+    .btn-ghost { background: white; color: var(--ink); border: 1px solid var(--line) !important; }
+
+    .content { padding: 32px 40px 40px; }
+
+    h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 28px 0 12px;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h2 .num {
+      width: 26px; height: 26px;
+      border-radius: 8px;
+      background: var(--soft);
+      color: var(--pink);
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    h3 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      margin: 18px 0 8px;
+      color: #3b3350;
+    }
+    p { margin-bottom: 10px; color: #2d2740; }
+    .muted { color: var(--muted); font-size: 10.5pt; }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 14px 0;
+    }
+    .card {
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+    .card strong {
+      font-family: 'Outfit', sans-serif;
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+    }
+    .card p { margin: 0; font-size: 11px; color: var(--muted); }
+
+    ol.clean {
+      padding-left: 18px;
+      margin: 8px 0 14px;
+      color: #2d2740;
+    }
+    ol.clean li { margin-bottom: 4px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 18px;
+      font-size: 10.5pt;
+    }
+    th {
+      text-align: left;
+      font-family: 'Outfit', sans-serif;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 8px 10px;
+      border-bottom: 2px solid var(--line);
+      background: var(--soft);
+    }
+    td {
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    code {
+      font-size: 10px;
+      background: var(--soft);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    /* Flow diagram */
+    .flow {
+      margin: 16px 0 20px;
+      padding: 18px 14px;
+      background: #faf8fc;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+    }
+    .flow-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--pink);
+      margin-bottom: 14px;
+      text-align: center;
+    }
+    .lane {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 6px 4px;
+      margin-bottom: 8px;
+    }
+    .node {
+      font-family: 'Outfit', sans-serif;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: 8px;
+      text-align: center;
+      min-width: 72px;
+      border: 1.5px solid transparent;
+    }
+    .node.start, .node.end {
+      border-radius: 999px;
+      background: #120a18;
+      color: white;
+      min-width: 56px;
+      padding: 8px 16px;
+    }
+    .node.end { background: var(--success); }
+    .node.task {
+      background: white;
+      border-color: #c9bfd4;
+      color: var(--ink);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .node.gateway {
+      background: #fff7ed;
+      border-color: #fdba74;
+      color: #9a3412;
+      transform: none;
+      clip-path: none;
+      border-radius: 4px;
+      font-size: 9px;
+    }
+    .arrow {
+      color: #9b8fb0;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 0 2px;
+    }
+    .pool-label {
+      font-family: 'Outfit', sans-serif;
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--cyan);
+      margin: 12px 0 8px;
+      padding-left: 4px;
+      border-left: 3px solid var(--cyan);
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--line);
+      font-size: 10px;
+      color: var(--muted);
+    }
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dot {
+      width: 12px; height: 12px;
+      border-radius: 4px;
+      display: inline-block;
+      border: 1.5px solid transparent;
+    }
+    .dot.start { background: #120a18; border-radius: 99px; }
+    .dot.task { background: white; border-color: #c9bfd4; }
+    .dot.gate { background: #fff7ed; border-color: #fdba74; }
+    .dot.end { background: var(--success); border-radius: 99px; }
+
+    .note {
+      background: #ecfeff;
+      border: 1px solid #a5f3fc;
+      border-left: 4px solid var(--cyan);
+      border-radius: 0 10px 10px 0;
+      padding: 12px 14px;
+      font-size: 10.5pt;
+      color: #155e75;
+      margin: 14px 0;
+    }
+
+    .footer-doc {
+      margin-top: 28px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--muted);
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .steps {
+      display: grid;
+      gap: 8px;
+      margin: 12px 0 18px;
+    }
+    .step {
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 10px 12px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+    .step .n {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      font-size: 14px;
+      color: var(--pink);
+      line-height: 1.2;
+    }
+    .step .t { font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 12px; }
+    .step .d { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    @media (max-width: 640px) {
+      .content, .cover { padding-left: 20px; padding-right: 20px; }
+      .grid-2 { grid-template-columns: 1fr; }
+      .cover h1 { font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="cover">
+      <p class="eyebrow">Documentação de processos · BPMN</p>
+      <h1>Pixel <span>Burguer</span></h1>
+      <p class="lead">
+        Mapa dos processos de negócio do site: pedido, acompanhamento,
+        autenticação e contato — do ponto de vista do cliente e do sistema front-end.
+      </p>
+      <div class="meta-row">
+        <span class="chip">Escopo: web2 / React + Vite</span>
+        <span class="chip">Versão: 1.0</span>
+        <span class="chip">Setembro 2026</span>
+      </div>
+    </header>
+
+    <div class="toolbar no-print">
+      <strong style="margin-right:auto;font-family:Outfit,sans-serif;color:#1a1424">Gerar PDF</strong>
+      <button class="btn-primary" type="button" onclick="window.print()">Imprimir / Salvar PDF</button>
+      <a class="btn btn-ghost" href="BPMN.md">Ver Markdown</a>
+      <a class="btn btn-ghost" href="BACKLOG.md">Ver Backlog</a>
+    </div>
+
+    <main class="content">
+      <h2><span class="num">1</span> Visão geral</h2>
+      <p>
+        O Pixel Burguer é um site de lanchonete com visual arcade/gamer. O cliente
+        navega pelo cardápio, monta o carrinho, finaliza o pedido em etapas e pode
+        acompanhar o status (simulado no navegador). Login e perfil são mockados;
+        carrinho e usuário ficam no <code>localStorage</code>.
+      </p>
+
+      <div class="grid-2">
+        <div class="card">
+          <strong>Ator · Cliente</strong>
+          <p>Navega, compra, autentica, envia contato e acompanha pedido.</p>
+        </div>
+        <div class="card">
+          <strong>Ator · Sistema (front-end)</strong>
+          <p>Valida formulários, persiste estado local, gera ID do pedido, simula status e exibe toasts.</p>
+        </div>
+      </div>
+
+      <h3>Processos principais</h3>
+      <ol class="clean">
+        <li>Navegação e consulta de cardápio</li>
+        <li>Montagem do carrinho e aplicação de cupom</li>
+        <li>Checkout e finalização do pedido</li>
+        <li>Acompanhamento do pedido</li>
+        <li>Autenticação e perfil</li>
+        <li>Contato institucional</li>
+      </ol>
+
+      <h2><span class="num">2</span> BPMN — fluxo do pedido (P1)</h2>
+      <p class="muted">Versão de apresentação: caminho feliz do pedido, da escolha à confirmação.</p>
+
+      <div class="flow">
+        <div class="flow-title">Pool Cliente — Processo de Pedido</div>
+        <div class="lane">
+          <div class="node start">Início</div>
+          <span class="arrow">→</span>
+          <div class="node task">Escolher<br>produtos</div>
+          <span class="arrow">→</span>
+          <div class="node task">Adicionar<br>ao carrinho</div>
+          <span class="arrow">→</span>
+          <div class="node gateway">Carrinho<br>OK?</div>
+        </div>
+        <div class="lane">
+          <div class="node task">Cupom<br>opcional</div>
+          <span class="arrow">→</span>
+          <div class="node task">Checkout<br>4 etapas</div>
+          <span class="arrow">→</span>
+          <div class="node gateway">Dados<br>válidos?</div>
+          <span class="arrow">→</span>
+          <div class="node task">Confirmar<br>pedido</div>
+        </div>
+        <div class="lane">
+          <div class="node task">Tela de<br>confirmação</div>
+          <span class="arrow">→</span>
+          <div class="node task">Acompanhar<br>status</div>
+          <span class="arrow">→</span>
+          <div class="node end">Fim</div>
+        </div>
+        <div class="legend">
+          <span><i class="dot start"></i> Evento início/fim</span>
+          <span><i class="dot task"></i> Atividade</span>
+          <span><i class="dot gate"></i> Gateway (decisão)</span>
+        </div>
+      </div>
+
+      <h3>Etapas do checkout</h3>
+      <div class="steps">
+        <div class="step">
+          <div class="n">01</div>
+          <div>
+            <div class="t">Identificação</div>
+            <div class="d">Nome, e-mail e telefone obrigatórios.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="n">02</div>
+          <div>
+            <div class="t">Entrega</div>
+            <div class="d">Delivery (endereço completo) ou retirada no estabelecimento.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="n">03</div>
+          <div>
+            <div class="t">Pagamento</div>
+            <div class="d">Seleção de Pix, cartão ou dinheiro (sem gateway real).</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="n">04</div>
+          <div>
+            <div class="t">Revisão e confirmação</div>
+            <div class="d"><code>placeOrder</code> gera ID, limpa o carrinho e segue para /confirmacao.</div>
+          </div>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Regra / gateway</th>
+            <th>Comportamento</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Carrinho vazio</td>
+            <td>CTA para explorar o cardápio</td>
+          </tr>
+          <tr>
+            <td>Cupom</td>
+            <td>Válidos: <code>PIXEL10</code>, <code>GAMER20</code>, <code>LEVEL50</code></td>
+          </tr>
+          <tr>
+            <td>Taxa de entrega</td>
+            <td>Valor fixo no front-end (<code>DELIVERY_FEE</code>)</td>
+          </tr>
+          <tr>
+            <td>Persistência</td>
+            <td>Carrinho e usuário em <code>localStorage</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="break"></div>
+
+      <h2><span class="num">3</span> BPMN — visão por pools</h2>
+      <p class="muted">Interação Cliente ↔ Sistema nas principais mensagens do pedido.</p>
+
+      <div class="flow">
+        <div class="pool-label">Cliente</div>
+        <div class="lane">
+          <div class="node start">Início</div>
+          <span class="arrow">→</span>
+          <div class="node gateway">O quê<br>fazer?</div>
+          <span class="arrow">→</span>
+          <div class="node task">Navegar<br>cardápio</div>
+          <span class="arrow">→</span>
+          <div class="node task">Add<br>carrinho</div>
+          <span class="arrow">→</span>
+          <div class="node task">Checkout</div>
+          <span class="arrow">→</span>
+          <div class="node end">Pedido OK</div>
+        </div>
+        <div class="pool-label">Sistema front-end</div>
+        <div class="lane">
+          <div class="node task">Toast</div>
+          <span class="arrow">·</span>
+          <div class="node task">localStorage</div>
+          <span class="arrow">·</span>
+          <div class="node task">placeOrder</div>
+          <span class="arrow">·</span>
+          <div class="node task">Simular<br>status</div>
+          <span class="arrow">·</span>
+          <div class="node task">Auth mock</div>
+        </div>
+        <div class="legend">
+          <span>Linhas tracejadas no modelo completo = mensagem Cliente ↔ Sistema</span>
+        </div>
+      </div>
+
+      <h2><span class="num">4</span> Demais processos</h2>
+
+      <h3>P2 — Acompanhamento</h3>
+      <table>
+        <thead>
+          <tr><th>Passo</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>0</td><td>Pedido recebido</td></tr>
+          <tr><td>1</td><td>Preparando</td></tr>
+          <tr><td>2</td><td>Pronto</td></tr>
+          <tr><td>3</td><td>A caminho</td></tr>
+          <tr><td>4</td><td>Entregue</td></tr>
+        </tbody>
+      </table>
+      <p class="muted">Avanço automático a cada 8 segundos no navegador. Sem pedido ativo → mensagem e CTA para o cardápio.</p>
+
+      <h3>P3 — Autenticação</h3>
+      <div class="grid-2">
+        <div class="card">
+          <strong>Login / Cadastro</strong>
+          <p>Mock: grava usuário local e redireciona ao perfil.</p>
+        </div>
+        <div class="card">
+          <strong>Perfil / Logout</strong>
+          <p>Abas mock (pedidos, endereços). Logout limpa sessão local.</p>
+        </div>
+      </div>
+
+      <h3>P4 — Contato</h3>
+      <p>Formulário em <code>/contato</code> → toast de sucesso. Sem envio real de e-mail.</p>
+
+      <h2><span class="num">5</span> Mapa de rotas</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Rota</th>
+            <th>Página</th>
+            <th>Processo</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>/</code></td><td>Home</td><td>P1</td></tr>
+          <tr><td><code>/cardapio</code></td><td>Menu</td><td>P1</td></tr>
+          <tr><td><code>/combos</code></td><td>Combos</td><td>P1</td></tr>
+          <tr><td><code>/promocoes</code></td><td>Promoções</td><td>P1</td></tr>
+          <tr><td><code>/carrinho</code></td><td>Carrinho</td><td>P1</td></tr>
+          <tr><td><code>/checkout</code></td><td>Checkout</td><td>P1</td></tr>
+          <tr><td><code>/confirmacao</code></td><td>Confirmação</td><td>P1</td></tr>
+          <tr><td><code>/acompanhar</code></td><td>Tracking</td><td>P2</td></tr>
+          <tr><td><code>/login</code> · <code>/cadastro</code> · <code>/perfil</code></td><td>Conta</td><td>P3</td></tr>
+          <tr><td><code>/sobre</code> · <code>/contato</code></td><td>Institucional</td><td>P4</td></tr>
+        </tbody>
+      </table>
+
+      <h2><span class="num">6</span> Limitações atuais</h2>
+      <div class="note">
+        Não há pool real de Cozinha/Operação, gateway financeiro, validação de credenciais no servidor
+        nem persistência de pedidos fora do navegador. Esses gaps estão no backlog
+        (<strong>docs/BACKLOG.md</strong>.
+      </div>
+
+      <div class="footer-doc">
+        <span>Pixel Burguer · BPMN 1.0</span>
+        <span>Gerado a partir de docs/BPMN.md</span>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Atalho: ao abrir com ?print=1 já abre o diálogo de impressão
+    if (new URLSearchParams(location.search).has('print')) {
+      window.addEventListener('load', () => setTimeout(() => window.print(), 400));
+    }
+  </script>
+</body>
+</html>

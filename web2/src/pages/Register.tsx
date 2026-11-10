@@ -9,13 +9,17 @@ export default function Register() {
   const [error, setError] = useState("");
   const set = (k: keyof typeof form, v: string) => { setForm(f => ({ ...f, [k]: v })); setError(""); };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.phone || !form.password) { setError("Preencha todos os campos."); return; }
     if (form.password !== form.confirm) { setError("As senhas não coincidem."); return; }
     if (form.password.length < 6) { setError("Senha deve ter pelo menos 6 caracteres."); return; }
-    register(form.name, form.email, form.phone, form.password);
-    navigate("/perfil");
+    try {
+      await register(form.name, form.email, form.phone, form.password);
+      navigate("/perfil");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível criar a conta.");
+    }
   };
 
   return (

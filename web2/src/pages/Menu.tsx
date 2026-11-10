@@ -1,18 +1,21 @@
 import { useState, useMemo } from "react";
-import { products, categoryLabels, type Category, type Product } from "../data/products";
+import { products as fallbackProducts, categoryLabels, type Category, type Product } from "../data/products";
+import { useCatalog } from "../contexts/CatalogContext";
 import ProductCard from "../components/ProductCard";
 import ProductModal from "../components/ProductModal";
 
 const categories: Category[] = ["burgers", "sides", "sandwiches", "drinks", "desserts", "combos"];
 
 export default function Menu() {
+  const { products } = useCatalog();
+  const catalog = products.length > 0 ? products : fallbackProducts;
   const [activeCategory, setActiveCategory] = useState<Category | "all">("all");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"default" | "price-asc" | "price-desc" | "rating">("default");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const filtered = useMemo(() => {
-    let list = [...products];
+    let list = [...catalog];
     if (activeCategory !== "all") list = list.filter(p => p.category === activeCategory);
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -22,7 +25,7 @@ export default function Menu() {
     else if (sort === "price-desc") list.sort((a, b) => b.price - a.price);
     else if (sort === "rating") list.sort((a, b) => b.rating - a.rating);
     return list;
-  }, [activeCategory, search, sort]);
+  }, [activeCategory, search, sort, catalog]);
 
   return (
     <div className="flex flex-col" style={{ height: "100%", background: "#080812" }}>
@@ -62,10 +65,10 @@ export default function Menu() {
                 background: activeCategory === "all" ? "rgba(0,245,255,0.1)" : "rgba(255,255,255,0.03)",
                 border: activeCategory === "all" ? "1px solid rgba(0,245,255,0.3)" : "1px solid rgba(255,255,255,0.07)",
               }}>
-              🎮 Todos ({products.length})
+              🎮 Todos ({catalog.length})
             </button>
             {categories.map(cat => {
-              const count = products.filter(p => p.category === cat).length;
+              const count = catalog.filter(p => p.category === cat).length;
               return (
                 <button key={cat} onClick={() => setActiveCategory(cat)}
                   className={`flex-shrink-0 px-3 py-1.5 rounded text-[11px] font-display font-semibold tracking-wide transition-all

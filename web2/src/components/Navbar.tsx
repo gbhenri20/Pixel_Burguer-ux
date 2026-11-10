@@ -63,6 +63,11 @@ export default function Navbar() {
           {/* Right actions */}
           <div className="flex items-center gap-2">
             {/* Cart */}
+            {(user?.role === "ADMIN" || user?.role === "KITCHEN") && (
+              <Link to="/admin" className="hidden sm:block px-3 py-1.5 rounded text-xs font-display font-semibold text-cyan-300 hover:bg-white/5 transition-all">
+                Painel
+              </Link>
+            )}
             <Link to="/carrinho" className="relative p-2 rounded transition-all hover:bg-white/5 group">
               <svg className="w-5 h-5 text-slate-300 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4m1.6 8L6 6m1 7v4a1 1 0 001 1h9a1 1 0 001-1v-4M9 21h.01M15 21h.01" />
@@ -116,6 +121,9 @@ export default function Navbar() {
               </Link>
             ))}
             <div className="border-t border-white/5 mt-2 pt-2">
+              {(user?.role === "ADMIN" || user?.role === "KITCHEN") && (
+                <Link to="/admin" className="block px-3 py-2.5 text-sm text-cyan-300">Painel</Link>
+              )}
               {user ? (
                 <Link to="/perfil" className="flex items-center gap-2 px-3 py-2.5 text-sm text-slate-300">
                   <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white"

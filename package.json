@@ -1,0 +1,17 @@
+{
+  "name": "pixel-burguer",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Pixel Burguer — frontend React e backend local Express/SQLite",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:raw": "concurrently -n API,WEB -c cyan,magenta \"npm run dev --prefix server\" \"npm run dev --prefix web2\"",
+    "setup": "npm install && npm install --prefix server && npm install --prefix web2"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

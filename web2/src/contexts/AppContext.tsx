@@ -1,7 +1,10 @@
-import { createContext, useContext, useReducer, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import type { Product } from "../data/products";
+import { orderStep, request, setToken, getToken, toCartProduct } from "../api/client";
+import type { ApiCart, ApiOrder, PlaceOrderPayload, User } from "../api/types";
 
-// --- Cart ---
+export type { User };
+
 export interface CartItem {
   product: Product;
   quantity: number;
@@ -14,97 +17,24 @@ interface CartState {
 }
 
 type CartAction =
-  | { type: "ADD"; product: Product }
-  | { type: "REMOVE"; id: string }
-  | { type: "INCREMENT"; id: string }
-  | { type: "DECREMENT"; id: string }
-  | { type: "CLEAR" }
-  | { type: "APPLY_COUPON"; coupon: string; discount: number }
-  | { type: "REMOVE_COUPON" };
+  | { type: "SET"; cart: CartState }
+  | { type: "CLEAR" };
 
 function cartReducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
-    case "ADD": {
-      const existing = state.items.find(i => i.product.id === action.product.id);
-      if (existing) {
-        return { ...state, items: state.items.map(i => i.product.id === action.product.id ? { ...i, quantity: i.quantity + 1 } : i) };
-      }
-      return { ...state, items: [...state.items, { product: action.product, quantity: 1 }] };
-    }
-    case "REMOVE":
-      return { ...state, items: state.items.filter(i => i.product.id !== action.id) };
-    case "INCREMENT":
-      return { ...state, items: state.items.map(i => i.product.id === action.id ? { ...i, quantity: i.quantity + 1 } : i) };
-    case "DECREMENT":
-      return {
-        ...state,
-        items: state.items
-          .map(i => i.product.id === action.id ? { ...i, quantity: i.quantity - 1 } : i)
-          .filter(i => i.quantity > 0),
-      };
+    case "SET":
+      return action.cart;
     case "CLEAR":
-      return { ...state, items: [], coupon: null, discount: 0 };
-    case "APPLY_COUPON":
-      return { ...state, coupon: action.coupon, discount: action.discount };
-    case "REMOVE_COUPON":
-      return { ...state, coupon: null, discount: 0 };
+      return { items: [], coupon: null, discount: 0 };
     default:
       return state;
   }
 }
 
-// --- Auth ---
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  avatar: string;
-}
-
-const MOCK_USER: User = {
-  id: "u001",
-  name: "Player One",
-  email: "player1@pixelburguer.com",
-  phone: "(11) 99999-0001",
-  avatar: "P",
-};
-
-// --- Toast ---
 export interface Toast {
   id: string;
   message: string;
   type: "success" | "error" | "info";
-}
-
-// --- Context ---
-interface AppContextType {
-  // Cart
-  cart: CartState;
-  addToCart: (product: Product) => void;
-  removeFromCart: (id: string) => void;
-  incrementItem: (id: string) => void;
-  decrementItem: (id: string) => void;
-  clearCart: () => void;
-  applyCoupon: (coupon: string, discount: number) => void;
-  removeCoupon: () => void;
-  cartTotal: number;
-  cartCount: number;
-  subtotal: number;
-  deliveryFee: number;
-  discountAmount: number;
-  // Auth
-  user: User | null;
-  login: (email: string, password: string) => boolean;
-  register: (name: string, email: string, phone: string, password: string) => boolean;
-  logout: () => void;
-  // Toast
-  toasts: Toast[];
-  showToast: (message: string, type?: Toast["type"]) => void;
-  removeToast: (id: string) => void;
-  // Order
-  lastOrder: LastOrder | null;
-  placeOrder: (details: OrderDetails) => string;
 }
 
 export interface LastOrder {
@@ -114,19 +44,40 @@ export interface LastOrder {
   address: string;
   payment: string;
   status: number;
+  statusKey: ApiOrder["status"];
   estimatedTime: number;
   createdAt: Date;
 }
 
-interface OrderDetails {
-  address: string;
-  payment: string;
+interface AppContextType {
+  cart: CartState;
+  addToCart: (product: Product) => void;
+  removeFromCart: (id: string) => void;
+  incrementItem: (id: string) => void;
+  decrementItem: (id: string) => void;
+  clearCart: () => void;
+  applyCoupon: (coupon: string) => Promise<void>;
+  removeCoupon: () => void;
+  cartTotal: number;
+  cartCount: number;
+  subtotal: number;
+  deliveryFee: number;
+  discountAmount: number;
+  user: User | null;
+  login: (email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, phone: string, password: string) => Promise<void>;
+  logout: () => void;
+  updateProfile: (patch: { name?: string; phone?: string; currentPassword?: string; newPassword?: string }) => Promise<void>;
+  toasts: Toast[];
+  showToast: (message: string, type?: Toast["type"]) => void;
+  removeToast: (id: string) => void;
+  lastOrder: LastOrder | null;
+  placeOrder: (details: PlaceOrderPayload) => Promise<string>;
+  trackOrder: (code: string) => Promise<void>;
+  refreshLastOrder: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
-
-const DELIVERY_FEE = 5.99;
-
 const EMPTY_CART: CartState = { items: [], coupon: null, discount: 0 };
 
 function isValidCartItem(item: unknown): item is CartItem {
@@ -146,10 +97,8 @@ function loadCart(): CartState {
   try {
     const saved = localStorage.getItem("pixel_cart");
     if (!saved) return EMPTY_CART;
-
     const parsed = JSON.parse(saved) as Partial<CartState>;
     if (!parsed || !Array.isArray(parsed.items)) return EMPTY_CART;
-
     return {
       items: parsed.items.filter(isValidCartItem),
       coupon: typeof parsed.coupon === "string" ? parsed.coupon : null,
@@ -160,92 +109,295 @@ function loadCart(): CartState {
   }
 }
 
+function readCachedUser(): User | null {
+  try {
+    const saved = localStorage.getItem("pixel_user");
+    return saved ? JSON.parse(saved) as User : null;
+  } catch {
+    return null;
+  }
+}
+
+export function toLastOrder(order: ApiOrder): LastOrder {
+  return {
+    id: order.code,
+    items: order.items.map((item) => ({ product: toCartProduct(item), quantity: item.quantity })),
+    total: order.total,
+    address: order.address,
+    payment: order.paymentMethod,
+    status: orderStep(order.status),
+    statusKey: order.status,
+    estimatedTime: order.estimatedMinutes,
+    createdAt: new Date(order.createdAt),
+  };
+}
+
+function fromApiCart(data: ApiCart): CartState {
+  return {
+    items: data.items.map((item) => ({ product: item.product, quantity: item.quantity })),
+    coupon: data.coupon,
+    discount: data.discount,
+  };
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [cart, dispatch] = useReducer(cartReducer, undefined, loadCart);
-  const [user, setUser] = useState<User | null>(() => {
-    try {
-      const saved = localStorage.getItem("pixel_user");
-      return saved ? JSON.parse(saved) : null;
-    } catch { return null; }
-  });
+  const [fees, setFees] = useState({ delivery: 5.99, pickup: 0 });
+  const [user, setUser] = useState<User | null>(readCachedUser);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [lastOrder, setLastOrder] = useState<LastOrder | null>(null);
+  const pending = useRef<Promise<unknown>>(Promise.resolve());
+  const lastOrderId = useRef<string | null>(null);
 
-  useEffect(() => {
-    localStorage.setItem("pixel_cart", JSON.stringify(cart));
-  }, [cart]);
+  const showToast = useCallback((message: string, type: Toast["type"] = "success") => {
+    const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((toast) => toast.id !== id)), 3500);
+  }, []);
+
+  const removeToast = (id: string) => setToasts((prev) => prev.filter((toast) => toast.id !== id));
+
+  const applyServerCart = useCallback((data: ApiCart) => {
+    dispatch({ type: "SET", cart: fromApiCart(data) });
+    setFees(data.fees);
+  }, []);
+
+  const enqueue = useCallback(<T,>(task: () => Promise<T>) => {
+    const run = pending.current.then(task, task);
+    pending.current = run.then(() => undefined, () => undefined);
+    return run;
+  }, []);
+
+  const fail = useCallback((error: unknown, fallback: string) => {
+    showToast(error instanceof Error ? error.message : fallback, "error");
+  }, [showToast]);
 
   useEffect(() => {
     if (user) localStorage.setItem("pixel_user", JSON.stringify(user));
     else localStorage.removeItem("pixel_user");
   }, [user]);
 
-  const cartCount = cart.items.reduce((sum, i) => sum + i.quantity, 0);
-  const subtotal = cart.items.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
+  useEffect(() => {
+    lastOrderId.current = lastOrder?.id ?? null;
+  }, [lastOrder]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void enqueue(async () => {
+      if (cancelled) return;
+      try {
+        if (getToken()) {
+          try {
+            const me = await request<User>("/auth/me");
+            if (!cancelled) setUser(me);
+          } catch {
+            setToken(null);
+            if (!cancelled) setUser(null);
+          }
+        } else if (!cancelled) {
+          setUser(null);
+        }
+
+        const local = loadCart();
+        let data = await request<ApiCart>("/cart");
+        if (data.items.length === 0 && local.items.length > 0) {
+          for (const item of local.items) {
+            data = await request<ApiCart>("/cart/items", {
+              method: "POST",
+              body: JSON.stringify({ productId: item.product.id, quantity: item.quantity }),
+            });
+          }
+          if (local.coupon) {
+            try {
+              data = await request<ApiCart>("/cart/coupon", {
+                method: "POST",
+                body: JSON.stringify({ code: local.coupon }),
+              });
+            } catch {
+              /* cupom antigo pode não atender mais às regras */
+            }
+          }
+        }
+        localStorage.removeItem("pixel_cart");
+        if (!cancelled) applyServerCart(data);
+
+        const code = localStorage.getItem("pixel_last_order");
+        if (code) {
+          try {
+            const order = await request<ApiOrder>(`/orders/code/${encodeURIComponent(code)}`);
+            if (!cancelled) setLastOrder(toLastOrder(order));
+          } catch {
+            localStorage.removeItem("pixel_last_order");
+          }
+        }
+      } catch {
+        if (!cancelled) showToast("Servidor local indisponível. Inicie a API para salvar carrinho e pedidos.", "error");
+      }
+    });
+    return () => { cancelled = true; };
+  }, [applyServerCart, enqueue, showToast]);
+
+  const cartCount = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+  const subtotal = cart.items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const discountAmount = (subtotal * cart.discount) / 100;
-  const cartTotal = subtotal - discountAmount + (subtotal > 0 ? DELIVERY_FEE : 0);
-
-  const showToast = (message: string, type: Toast["type"] = "success") => {
-    const id = Date.now().toString();
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
-  };
-
-  const removeToast = (id: string) => setToasts(prev => prev.filter(t => t.id !== id));
+  const deliveryFee = subtotal > 0 ? fees.delivery : 0;
+  const cartTotal = subtotal - discountAmount + deliveryFee;
 
   const addToCart = (product: Product) => {
-    dispatch({ type: "ADD", product });
-    showToast(`🍔 ${product.name} adicionado ao carrinho!`);
+    void enqueue(async () => {
+      try {
+        applyServerCart(await request<ApiCart>("/cart/items", {
+          method: "POST",
+          body: JSON.stringify({ productId: product.id, quantity: 1 }),
+        }));
+        showToast(`🍔 ${product.name} adicionado ao carrinho!`);
+      } catch (error) {
+        fail(error, "Não foi possível adicionar o item.");
+      }
+    });
   };
 
-  const login = (email: string, _password: string) => {
-    const mockUser = { ...MOCK_USER, email };
-    setUser(mockUser);
+  const incrementItem = (id: string) => {
+    void enqueue(async () => {
+      try {
+        applyServerCart(await request<ApiCart>("/cart/items", {
+          method: "POST",
+          body: JSON.stringify({ productId: id, quantity: 1 }),
+        }));
+      } catch (error) {
+        fail(error, "Não foi possível atualizar a quantidade.");
+      }
+    });
+  };
+
+  const decrementItem = (id: string) => {
+    void enqueue(async () => {
+      try {
+        const current = await request<ApiCart>("/cart");
+        const item = current.items.find((entry) => entry.product.id === id);
+        if (!item) {
+          applyServerCart(current);
+          return;
+        }
+        applyServerCart(await request<ApiCart>(`/cart/items/${encodeURIComponent(id)}`, {
+          method: "PATCH",
+          body: JSON.stringify({ quantity: item.quantity - 1 }),
+        }));
+      } catch (error) {
+        fail(error, "Não foi possível atualizar a quantidade.");
+      }
+    });
+  };
+
+  const removeFromCart = (id: string) => {
+    void enqueue(async () => {
+      try {
+        applyServerCart(await request<ApiCart>(`/cart/items/${encodeURIComponent(id)}`, { method: "DELETE" }));
+      } catch (error) {
+        fail(error, "Não foi possível remover o item.");
+      }
+    });
+  };
+
+  const clearCart = () => {
+    void enqueue(async () => {
+      try {
+        applyServerCart(await request<ApiCart>("/cart", { method: "DELETE" }));
+      } catch (error) {
+        fail(error, "Não foi possível esvaziar o carrinho.");
+      }
+    });
+  };
+
+  const applyCoupon = (coupon: string) => enqueue(async () => {
+    applyServerCart(await request<ApiCart>("/cart/coupon", {
+      method: "POST",
+      body: JSON.stringify({ code: coupon }),
+    }));
+  });
+
+  const removeCoupon = () => {
+    void enqueue(async () => {
+      try {
+        applyServerCart(await request<ApiCart>("/cart/coupon", { method: "DELETE" }));
+      } catch (error) {
+        fail(error, "Não foi possível remover o cupom.");
+      }
+    });
+  };
+
+  const login = (email: string, password: string) => enqueue(async () => {
+    const result = await request<{ token: string; user: User }>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+    setToken(result.token);
+    setUser(result.user);
+    applyServerCart(await request<ApiCart>("/cart"));
     showToast("Login realizado com sucesso! Bem-vindo de volta, Player!");
-    return true;
-  };
+  });
 
-  const register = (name: string, email: string, phone: string, _password: string) => {
-    setUser({ id: "u" + Date.now(), name, email, phone, avatar: name[0].toUpperCase() });
+  const register = (name: string, email: string, phone: string, password: string) => enqueue(async () => {
+    const result = await request<{ token: string; user: User }>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ name, email, phone, password }),
+    });
+    setToken(result.token);
+    setUser(result.user);
+    applyServerCart(await request<ApiCart>("/cart"));
     showToast("Conta criada! Bem-vindo à Pixel Burguer!");
-    return true;
-  };
+  });
 
   const logout = () => {
+    setToken(null);
     setUser(null);
     showToast("Até a próxima, Player!", "info");
+    void request<ApiCart>("/cart").then(applyServerCart).catch(() => dispatch({ type: "CLEAR" }));
   };
 
-  const placeOrder = (details: OrderDetails) => {
-    const orderId = "PB" + Math.floor(Math.random() * 90000 + 10000);
-    const order: LastOrder = {
-      id: orderId,
-      items: [...cart.items],
-      total: cartTotal,
-      address: details.address,
-      payment: details.payment,
-      status: 0,
-      estimatedTime: 35 + Math.floor(Math.random() * 15),
-      createdAt: new Date(),
-    };
-    setLastOrder(order);
-    dispatch({ type: "CLEAR" });
-    return orderId;
+  const updateProfile = async (patch: { name?: string; phone?: string; currentPassword?: string; newPassword?: string }) => {
+    const updated = await request<User>("/auth/me", {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    });
+    setUser(updated);
+    showToast("Dados atualizados.");
   };
+
+  const rememberOrder = (order: ApiOrder) => {
+    setLastOrder(toLastOrder(order));
+    localStorage.setItem("pixel_last_order", order.code);
+  };
+
+  const placeOrder = (details: PlaceOrderPayload) => enqueue(async () => {
+    const order = await request<ApiOrder>("/orders", {
+      method: "POST",
+      body: JSON.stringify(details),
+    });
+    rememberOrder(order);
+    dispatch({ type: "CLEAR" });
+    return order.code;
+  });
+
+  const trackOrder = async (code: string) => {
+    const order = await request<ApiOrder>(`/orders/code/${encodeURIComponent(code.trim().toUpperCase())}`);
+    rememberOrder(order);
+  };
+
+  const refreshLastOrder = useCallback(async () => {
+    const code = lastOrderId.current;
+    if (!code) return;
+    const order = await request<ApiOrder>(`/orders/code/${encodeURIComponent(code)}`);
+    setLastOrder(toLastOrder(order));
+  }, []);
 
   return (
     <AppContext.Provider value={{
-      cart, addToCart,
-      removeFromCart: (id) => dispatch({ type: "REMOVE", id }),
-      incrementItem: (id) => dispatch({ type: "INCREMENT", id }),
-      decrementItem: (id) => dispatch({ type: "DECREMENT", id }),
-      clearCart: () => dispatch({ type: "CLEAR" }),
-      applyCoupon: (coupon, discount) => dispatch({ type: "APPLY_COUPON", coupon, discount }),
-      removeCoupon: () => dispatch({ type: "REMOVE_COUPON" }),
-      cartTotal, cartCount, subtotal, deliveryFee: DELIVERY_FEE, discountAmount,
-      user, login, register, logout,
+      cart, addToCart, removeFromCart, incrementItem, decrementItem, clearCart, applyCoupon, removeCoupon,
+      cartTotal, cartCount, subtotal, deliveryFee, discountAmount,
+      user, login, register, logout, updateProfile,
       toasts, showToast, removeToast,
-      lastOrder, placeOrder,
+      lastOrder, placeOrder, trackOrder, refreshLastOrder,
     }}>
       {children}
     </AppContext.Provider>

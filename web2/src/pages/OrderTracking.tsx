@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { useApp } from "../contexts/AppContext";
 
@@ -11,27 +11,49 @@ const STEPS = [
 ];
 
 export default function OrderTracking() {
-  const { lastOrder } = useApp();
-  const [currentStep, setCurrentStep] = useState(lastOrder?.status ?? 1);
+  const { lastOrder, trackOrder, refreshLastOrder } = useApp();
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
-    if (!lastOrder) return;
-    const interval = setInterval(() => {
-      setCurrentStep(s => { if (s < STEPS.length - 1) return s + 1; clearInterval(interval); return s; });
-    }, 8000);
-    return () => clearInterval(interval);
-  }, [lastOrder]);
+    if (!lastOrder || lastOrder.statusKey === "DELIVERED" || lastOrder.statusKey === "CANCELLED") return;
+    const id = window.setInterval(() => { void refreshLastOrder(); }, 4000);
+    return () => clearInterval(id);
+  }, [lastOrder?.id, lastOrder?.statusKey, refreshLastOrder]);
+
+  const lookup = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError("");
+    setSearching(true);
+    try {
+      await trackOrder(code);
+      setCode("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Pedido não encontrado.");
+    } finally {
+      setSearching(false);
+    }
+  };
 
   if (!lastOrder) {
     return (
-      <div className="flex flex-col items-center justify-center" style={{ height: "100%", background: "#080812" }}>
+      <div className="flex flex-col items-center justify-center px-4" style={{ height: "100%", background: "#080812" }}>
         <div className="text-5xl mb-4">🎮</div>
         <h2 className="font-display font-bold text-xl text-white mb-2">Nenhum pedido ativo</h2>
-        <p className="text-slate-500 text-sm mb-6 text-center px-4">Faça um pedido para acompanhar em tempo real.</p>
-        <Link to="/cardapio" className="btn-primary text-sm py-2.5 px-8">Ver cardápio</Link>
+        <p className="text-slate-500 text-sm mb-6 text-center">Consulte pelo código ou faça um novo pedido.</p>
+        <form onSubmit={lookup} className="flex gap-2 w-full max-w-sm mb-4">
+          <input value={code} onChange={e => setCode(e.target.value)} placeholder="Ex.: PB12345" className="flex-1" />
+          <button type="submit" disabled={searching} className="btn-primary text-xs px-4 disabled:opacity-40">Buscar</button>
+        </form>
+        {error && <p className="text-xs text-red-400 mb-4">{error}</p>}
+        <Link to="/cardapio" className="btn-outline text-sm py-2.5 px-8">Ver cardápio</Link>
       </div>
     );
   }
+
+  const currentStep = Math.max(0, lastOrder.status);
+  const cancelled = lastOrder.statusKey === "CANCELLED";
 
   return (
     <div className="flex flex-col" style={{ height: "100%", background: "#080812" }}>
@@ -42,50 +64,59 @@ export default function OrderTracking() {
             <h1 className="font-display font-black text-2xl text-white">Pedido <span className="neon-text-pink">#{lastOrder.id}</span></h1>
             <p className="text-slate-400 text-xs">~{lastOrder.estimatedTime} min</p>
           </div>
-          {/* Progress bar */}
-          <div className="mt-3 h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
-            <div className="h-full rounded-full transition-all duration-1000"
-              style={{
-                width: `${(currentStep / (STEPS.length - 1)) * 100}%`,
-                background: "linear-gradient(90deg, #ff006e, #a855f7, #00f5ff)",
-                boxShadow: "0 0 8px rgba(0,245,255,0.4)",
-              }} />
-          </div>
-          <p className="text-right text-xs mt-1 font-display" style={{ color: "#39ff14" }}>
-            {Math.round((currentStep / (STEPS.length - 1)) * 100)}% concluído
-          </p>
+          {!cancelled && (
+            <>
+              <div className="mt-3 h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
+                <div className="h-full rounded-full transition-all duration-1000"
+                  style={{
+                    width: `${(currentStep / (STEPS.length - 1)) * 100}%`,
+                    background: "linear-gradient(90deg, #ff006e, #a855f7, #00f5ff)",
+                    boxShadow: "0 0 8px rgba(0,245,255,0.4)",
+                  }} />
+              </div>
+              <p className="text-right text-xs mt-1 font-display" style={{ color: "#39ff14" }}>
+                {Math.round((currentStep / (STEPS.length - 1)) * 100)}% concluído
+              </p>
+            </>
+          )}
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
         <div className="max-w-xl mx-auto px-6 py-5">
-          {/* Steps */}
-          <div className="card-glow rounded-xl p-5 mb-4">
-            <div className="space-y-4">
-              {STEPS.map((step, i) => (
-                <div key={step.label} className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 transition-all duration-500 ${i <= currentStep ? "opacity-100" : "opacity-30"}`}
-                    style={{
-                      background: i < currentStep ? "rgba(57,255,20,0.12)" : i === currentStep ? "rgba(255,0,110,0.12)" : "rgba(255,255,255,0.04)",
-                      border: i < currentStep ? "1px solid rgba(57,255,20,0.3)" : i === currentStep ? "1px solid rgba(255,0,110,0.5)" : "1px solid rgba(255,255,255,0.07)",
-                      boxShadow: i === currentStep ? "0 0 14px rgba(255,0,110,0.35)" : "none",
-                    }}>
-                    {step.icon}
-                  </div>
-                  <div className="flex-1">
-                    <p className={`font-display font-semibold text-sm transition-colors ${i <= currentStep ? "text-white" : "text-slate-600"}`}>
-                      {step.label}
-                      {i === currentStep && <span className="ml-2 inline-block w-1.5 h-1.5 rounded-full animate-pulse-neon" style={{ background: "#ff006e" }} />}
-                    </p>
-                    <p className={`text-xs ${i <= currentStep ? "text-slate-400" : "text-slate-700"}`}>{step.desc}</p>
-                  </div>
-                  {i < currentStep && <span className="text-[10px] font-display" style={{ color: "#39ff14" }}>✓</span>}
-                </div>
-              ))}
+          {cancelled ? (
+            <div className="card-glow rounded-xl p-5 mb-4 text-center">
+              <p className="text-2xl mb-2">⛔</p>
+              <h2 className="font-display font-bold text-white mb-1">Pedido cancelado</h2>
+              <p className="text-slate-500 text-sm">O estoque e o cupom, se houver, foram devolvidos.</p>
             </div>
-          </div>
+          ) : (
+            <div className="card-glow rounded-xl p-5 mb-4">
+              <div className="space-y-4">
+                {STEPS.map((step, i) => (
+                  <div key={step.label} className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 transition-all duration-500 ${i <= currentStep ? "opacity-100" : "opacity-30"}`}
+                      style={{
+                        background: i < currentStep ? "rgba(57,255,20,0.12)" : i === currentStep ? "rgba(255,0,110,0.12)" : "rgba(255,255,255,0.04)",
+                        border: i < currentStep ? "1px solid rgba(57,255,20,0.3)" : i === currentStep ? "1px solid rgba(255,0,110,0.5)" : "1px solid rgba(255,255,255,0.07)",
+                        boxShadow: i === currentStep ? "0 0 14px rgba(255,0,110,0.35)" : "none",
+                      }}>
+                      {step.icon}
+                    </div>
+                    <div className="flex-1">
+                      <p className={`font-display font-semibold text-sm transition-colors ${i <= currentStep ? "text-white" : "text-slate-600"}`}>
+                        {step.label}
+                        {i === currentStep && <span className="ml-2 inline-block w-1.5 h-1.5 rounded-full animate-pulse-neon" style={{ background: "#ff006e" }} />}
+                      </p>
+                      <p className={`text-xs ${i <= currentStep ? "text-slate-400" : "text-slate-700"}`}>{step.desc}</p>
+                    </div>
+                    {i < currentStep && <span className="text-[10px] font-display" style={{ color: "#39ff14" }}>✓</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-          {/* Details */}
           <div className="card-glow rounded-xl p-4 mb-4">
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div><p className="text-slate-500 mb-0.5">Endereço</p><p className="text-white leading-relaxed">{lastOrder.address}</p></div>
@@ -93,6 +124,12 @@ export default function OrderTracking() {
               <div><p className="text-slate-500 mb-0.5">Total</p><p className="font-display font-bold neon-text-cyan text-sm">R$ {lastOrder.total.toFixed(2)}</p></div>
             </div>
           </div>
+
+          <form onSubmit={lookup} className="flex gap-2 mb-3">
+            <input value={code} onChange={e => setCode(e.target.value)} placeholder="Consultar outro código" className="flex-1 text-xs" />
+            <button type="submit" disabled={searching} className="btn-outline text-xs px-3 disabled:opacity-40">Buscar</button>
+          </form>
+          {error && <p className="text-xs text-red-400 mb-3">{error}</p>}
 
           <Link to="/" className="btn-outline block text-center text-sm py-2.5">Voltar ao início</Link>
         </div>

@@ -1,22 +1,21 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useApp } from "../contexts/AppContext";
-import { COUPONS } from "../data/products";
 
 export default function Cart() {
   const { cart, incrementItem, decrementItem, removeFromCart, subtotal, deliveryFee, discountAmount, cartTotal, applyCoupon, removeCoupon, showToast } = useApp();
   const [couponInput, setCouponInput] = useState("");
   const navigate = useNavigate();
 
-  const handleApplyCoupon = () => {
+  const handleApplyCoupon = async () => {
     const code = couponInput.trim().toUpperCase();
-    const discount = COUPONS[code];
-    if (discount) {
-      applyCoupon(code, discount);
-      showToast(`🎮 Cupom ${code} aplicado! ${discount}% de desconto!`);
+    if (!code) return;
+    try {
+      await applyCoupon(code);
+      showToast(`🎮 Cupom ${code} aplicado!`);
       setCouponInput("");
-    } else {
-      showToast("Cupom inválido. Tente PIXEL10, GAMER20 ou LEVEL50", "error");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Cupom inválido.", "error");
     }
   };
 

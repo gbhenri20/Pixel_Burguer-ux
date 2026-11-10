@@ -1,5 +1,6 @@
 import { createBrowserRouter, RouterProvider, Outlet, ScrollRestoration } from "react-router";
 import { AppProvider } from "./contexts/AppContext";
+import { CatalogProvider } from "./contexts/CatalogContext";
 import Navbar from "./components/Navbar";
 import ToastContainer from "./components/Toast";
 
@@ -16,9 +17,11 @@ import Contact from "./pages/Contact";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Profile from "./pages/Profile";
+import Admin from "./pages/Admin";
 
 function Root() {
   return (
+    <CatalogProvider>
     <AppProvider>
       <div style={{ minHeight: "100dvh", background: "#080812", position: "relative", display: "flex", flexDirection: "column" }}>
         <Navbar />
@@ -30,6 +33,7 @@ function Root() {
       </div>
       <ScrollRestoration />
     </AppProvider>
+    </CatalogProvider>
   );
 }
 
@@ -64,6 +68,7 @@ const router = createBrowserRouter([
       { path: "login", Component: Login },
       { path: "cadastro", Component: Register },
       { path: "perfil", Component: Profile },
+      { path: "admin", Component: Admin },
       { path: "*", Component: NotFound },
     ],
   },

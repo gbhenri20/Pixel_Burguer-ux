@@ -1,17 +1,31 @@
-import { useState } from "react";
-import { products } from "../data/products";
+import { useEffect, useState } from "react";
+import { products as staticProducts } from "../data/products";
 import type { Product } from "../data/products";
 import ProductCard from "../components/ProductCard";
 import ProductModal from "../components/ProductModal";
 import { useApp } from "../contexts/AppContext";
+import { useCatalog } from "../contexts/CatalogContext";
+import { request } from "../api/client";
+import type { PublicCoupon } from "../api/types";
 
-const promoProducts = products.filter(p => p.promo);
+const FALLBACK_COUPONS: PublicCoupon[] = [
+  { code: "PIXEL10", discountPercent: 10, minSubtotal: 0 },
+  { code: "GAMER20", discountPercent: 20, minSubtotal: 40 },
+  { code: "LEVEL50", discountPercent: 50, minSubtotal: 20 },
+];
 
 export default function Promotions() {
+  const { products } = useCatalog();
+  const promoProducts = (products.length > 0 ? products : staticProducts).filter(p => p.promo);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [coupons, setCoupons] = useState<PublicCoupon[]>(FALLBACK_COUPONS);
   const { addToCart } = useApp();
   const featured = promoProducts[0];
   const rest = promoProducts.slice(1);
+
+  useEffect(() => {
+    request<PublicCoupon[]>("/coupons").then(setCoupons).catch(() => {});
+  }, []);
 
   return (
     <div className="flex flex-col" style={{ height: "100%", background: "#080812" }}>
@@ -61,11 +75,14 @@ export default function Promotions() {
             <h3 className="font-display font-bold text-white text-sm mb-1">🎮 Cupons de desconto</h3>
             <p className="text-slate-500 text-xs mb-3">Aplique no carrinho durante o checkout:</p>
             <div className="flex flex-wrap gap-2">
-              {[["PIXEL10", "10%"], ["GAMER20", "20%"], ["LEVEL50", "50%"]].map(([code, val]) => (
-                <div key={code} className="flex items-center gap-2 px-3 py-1.5 rounded"
+              {coupons.map(coupon => (
+                <div key={coupon.code} className="flex items-center gap-2 px-3 py-1.5 rounded"
                   style={{ background: "rgba(57,255,20,0.08)", border: "1px solid rgba(57,255,20,0.2)" }}>
-                  <span className="font-pixel text-[10px]" style={{ color: "#39ff14" }}>{code}</span>
-                  <span className="text-slate-400 text-xs">{val} de desconto</span>
+                  <span className="font-pixel text-[10px]" style={{ color: "#39ff14" }}>{coupon.code}</span>
+                  <span className="text-slate-400 text-xs">
+                    {coupon.discountPercent}% de desconto
+                    {coupon.minSubtotal > 0 ? ` · mín. R$ ${coupon.minSubtotal.toFixed(0)}` : ""}
+                  </span>
                 </div>
               ))}
             </div>

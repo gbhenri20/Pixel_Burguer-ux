@@ -9,11 +9,15 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) { setError("Preencha todos os campos."); return; }
-    login(email, password);
-    navigate("/perfil");
+    try {
+      await login(email, password);
+      navigate("/perfil");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível entrar.");
+    }
   };
 
   return (

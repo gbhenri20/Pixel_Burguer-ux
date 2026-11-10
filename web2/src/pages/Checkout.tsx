@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { useApp } from "../contexts/AppContext";
 
 const STEPS = ["Identificação", "Endereço", "Pagamento", "Revisão"];
 
 export default function Checkout() {
-  const { cart, subtotal, deliveryFee, discountAmount, cartTotal, user, placeOrder } = useApp();
+  const { cart, subtotal, deliveryFee, discountAmount, user, placeOrder } = useApp();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [deliveryType, setDeliveryType] = useState<"delivery" | "pickup">("delivery");
@@ -14,7 +14,11 @@ export default function Checkout() {
     name: user?.name || "", email: user?.email || "", phone: user?.phone || "",
     cep: "", street: "", number: "", complement: "", neighborhood: "", city: "",
   });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }));
+  const feeNow = deliveryType === "pickup" || subtotal <= 0 ? 0 : deliveryFee;
+  const totalNow = subtotal - discountAmount + feeNow;
 
   const canNext = () => {
     if (step === 0) return form.name && form.email && form.phone;
@@ -22,11 +26,43 @@ export default function Checkout() {
     return true;
   };
 
-  const handleFinish = () => {
-    const address = deliveryType === "pickup" ? "Retirada no estabelecimento" : `${form.street}, ${form.number} — ${form.neighborhood}, ${form.city}`;
-    placeOrder({ address, payment: paymentMethod });
-    navigate("/confirmacao");
+  const handleFinish = async () => {
+    setError("");
+    setSubmitting(true);
+    try {
+      await placeOrder({
+        customerName: form.name,
+        customerEmail: form.email,
+        customerPhone: form.phone,
+        deliveryType,
+        paymentMethod,
+        address: deliveryType === "delivery" ? {
+          cep: form.cep,
+          street: form.street,
+          number: form.number,
+          complement: form.complement,
+          neighborhood: form.neighborhood,
+          city: form.city,
+        } : undefined,
+      });
+      navigate("/confirmacao");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível finalizar o pedido.");
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  if (cart.items.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center" style={{ height: "100%", background: "#080812" }}>
+        <div className="text-5xl mb-4">🎮</div>
+        <h2 className="font-display font-bold text-xl text-white mb-2">Carrinho vazio</h2>
+        <p className="text-slate-500 text-sm mb-6">Adicione itens antes de finalizar o pedido.</p>
+        <Link to="/cardapio" className="btn-primary text-sm py-2.5 px-8">Ver cardápio</Link>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col" style={{ height: "100%", background: "#080812" }}>
@@ -152,16 +188,19 @@ export default function Checkout() {
                       ))}
                     </div>
                     <div className="pt-3 border-t border-white/5 space-y-1.5 text-xs">
-                      <div className="flex justify-between"><span className="text-slate-500">Entrega</span><span className="text-white">R$ {deliveryFee.toFixed(2)}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-500">Entrega</span><span className="text-white">{feeNow === 0 ? "Grátis" : `R$ ${feeNow.toFixed(2)}`}</span></div>
                       {discountAmount > 0 && <div className="flex justify-between"><span style={{ color: "#39ff14" }}>Desconto</span><span style={{ color: "#39ff14" }}>−R$ {discountAmount.toFixed(2)}</span></div>}
                       <div className="flex justify-between font-bold pt-2 border-t border-white/5">
                         <span className="text-white font-display">TOTAL</span>
-                        <span className="neon-text-cyan font-display text-sm">R$ {cartTotal.toFixed(2)}</span>
+                        <span className="neon-text-cyan font-display text-sm">R$ {totalNow.toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
                 )}
 
+                {error && (
+                  <p className="text-xs text-red-400 mt-3">{error}</p>
+                )}
                 <div className="flex gap-2 mt-5">
                   {step > 0 && (
                     <button onClick={() => setStep(s => s - 1)} className="btn-outline text-xs py-2 px-4">← Voltar</button>
@@ -171,7 +210,9 @@ export default function Checkout() {
                       Continuar →
                     </button>
                   ) : (
-                    <button onClick={handleFinish} className="btn-primary text-sm py-2.5 flex-1">🎮 Finalizar Pedido</button>
+                    <button onClick={handleFinish} disabled={submitting} className="btn-primary text-sm py-2.5 flex-1 disabled:opacity-40">
+                      {submitting ? "Enviando..." : "🎮 Finalizar Pedido"}
+                    </button>
                   )}
                 </div>
               </div>
@@ -194,7 +235,7 @@ export default function Checkout() {
                 </div>
                 <div className="pt-3 border-t border-white/5 flex justify-between items-center">
                   <span className="text-white font-display font-bold text-xs">Total</span>
-                  <span className="neon-text-cyan font-display font-bold text-sm">R$ {cartTotal.toFixed(2)}</span>
+                  <span className="neon-text-cyan font-display font-bold text-sm">R$ {totalNow.toFixed(2)}</span>
                 </div>
               </div>
             </div>

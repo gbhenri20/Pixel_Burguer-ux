@@ -1,18 +1,22 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router";
-import { featuredProducts, promotions, products, HOUSE_SPECIAL_ID } from "../data/products";
+import { HOUSE_SPECIAL_ID } from "../data/products";
 import ProductCard, { ProductSkeleton } from "../components/ProductCard";
 import ProductModal from "../components/ProductModal";
 import { useApp } from "../contexts/AppContext";
+import { useCatalog } from "../contexts/CatalogContext";
 import type { Product } from "../data/products";
 
-const houseSpecial =
-  products.find(p => p.id === HOUSE_SPECIAL_ID) ??
-  products[0];
+function useHouseSpecial() {
+  const { products } = useCatalog();
+  return products.find(p => p.id === HOUSE_SPECIAL_ID) ?? products[0];
+}
 
 /* ── Section 1: Hero ── */
 function HeroSection() {
   const { addToCart } = useApp();
+  const houseSpecial = useHouseSpecial();
+  if (!houseSpecial) return null;
   return (
     <section className="snap-section hero-gradient relative flex flex-col justify-center overflow-hidden">
       <div className="absolute inset-0 grid-scanlines opacity-20 pointer-events-none" />
@@ -93,6 +97,8 @@ function HeroSection() {
 /* ── Section 2: MODO DEUS — House Special ── */
 function HouseSpecialSection() {
   const { addToCart } = useApp();
+  const houseSpecial = useHouseSpecial();
+  if (!houseSpecial) return null;
   return (
     <section className="snap-section relative flex flex-col justify-center overflow-hidden"
       style={{ background: "#05050e" }}>
@@ -158,17 +164,23 @@ function HouseSpecialSection() {
 
 /* ── Section 3: Featured carousel ── */
 function FeaturedSection() {
+  const { products } = useCatalog();
   const [index, setIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const intervalRef = useRef<number>(0);
-  const others = featuredProducts.filter(p => p.id !== HOUSE_SPECIAL_ID);
+  const others = products.filter(p => p.featured && p.id !== HOUSE_SPECIAL_ID);
 
   useEffect(() => {
-    setTimeout(() => setLoading(false), 600);
+    const timeout = window.setTimeout(() => setLoading(false), 600);
+    return () => clearTimeout(timeout);
+  }, []);
+
+  useEffect(() => {
+    if (others.length === 0) return;
     intervalRef.current = window.setInterval(() => setIndex(i => (i + 1) % Math.max(1, others.length - 2)), 4500);
     return () => clearInterval(intervalRef.current);
-  }, []);
+  }, [others.length]);
 
   const visibleCount = 3;
 
@@ -225,8 +237,9 @@ function FeaturedSection() {
 
 /* ── Section 4: Promos + CTA ── */
 function PromoSection() {
+  const { products } = useCatalog();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const promos = promotions.filter(p => p.id !== HOUSE_SPECIAL_ID).slice(0, 3);
+  const promos = products.filter(p => p.promo && p.id !== HOUSE_SPECIAL_ID).slice(0, 3);
   return (
     <section className="snap-section flex flex-col justify-center overflow-hidden" style={{ background: "#080812" }}>
       <div className="max-w-7xl mx-auto px-6 w-full">
@@ -282,6 +295,7 @@ function PromoSection() {
 }
 
 export default function Home() {
+  const houseSpecial = useHouseSpecial();
   if (!houseSpecial) {
     return (
       <div className="page-scroll flex items-center justify-center p-6" style={{ flex: 1, minHeight: "calc(100dvh - 64px)" }}>

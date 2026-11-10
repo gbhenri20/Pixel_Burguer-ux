@@ -1,13 +1,27 @@
-import { useState } from "react";
-import { products } from "../data/products";
+import { useEffect, useState } from "react";
+import { products as staticProducts } from "../data/products";
 import type { Product } from "../data/products";
 import ProductCard from "../components/ProductCard";
 import ProductModal from "../components/ProductModal";
+import { useCatalog } from "../contexts/CatalogContext";
+import { request } from "../api/client";
+import type { PublicCoupon } from "../api/types";
 
-const combos = products.filter(p => p.category === "combos");
+const FALLBACK_COUPONS: PublicCoupon[] = [
+  { code: "PIXEL10", discountPercent: 10, minSubtotal: 0 },
+  { code: "GAMER20", discountPercent: 20, minSubtotal: 40 },
+  { code: "LEVEL50", discountPercent: 50, minSubtotal: 20 },
+];
 
 export default function Combos() {
+  const { products } = useCatalog();
+  const combos = (products.length > 0 ? products : staticProducts).filter(p => p.category === "combos");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [coupons, setCoupons] = useState<PublicCoupon[]>(FALLBACK_COUPONS);
+
+  useEffect(() => {
+    request<PublicCoupon[]>("/coupons").then(setCoupons).catch(() => {});
+  }, []);
 
   return (
     <div className="flex flex-col" style={{ height: "100%", background: "#080812" }}>
@@ -34,9 +48,9 @@ export default function Combos() {
             <h3 className="font-display font-bold text-white text-base mb-2">Monte seu próprio combo</h3>
             <p className="text-slate-400 text-sm mb-3">Use cupons no carrinho para economizar na combinação que você quiser.</p>
             <div className="flex justify-center gap-2 flex-wrap">
-              {[["PIXEL10", "10%"], ["GAMER20", "20%"], ["LEVEL50", "50%"]].map(([code, val]) => (
-                <span key={code} className="font-pixel text-[10px] px-2 py-1 rounded" style={{ color: "#39ff14", background: "rgba(57,255,20,0.08)", border: "1px solid rgba(57,255,20,0.2)" }}>
-                  {code} — {val}
+              {coupons.map(coupon => (
+                <span key={coupon.code} className="font-pixel text-[10px] px-2 py-1 rounded" style={{ color: "#39ff14", background: "rgba(57,255,20,0.08)", border: "1px solid rgba(57,255,20,0.2)" }}>
+                  {coupon.code} — {coupon.discountPercent}%{coupon.minSubtotal > 0 ? ` acima de R$ ${coupon.minSubtotal.toFixed(0)}` : ""}
                 </span>
               ))}
             </div>

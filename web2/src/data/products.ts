@@ -1,3 +1,4 @@
+/** Catálogo de fallback e fonte do seed local. Com a API no ar, o cardápio vem do SQLite. */
 export type Category = "burgers" | "sides" | "sandwiches" | "drinks" | "desserts" | "combos";
 
 export interface Product {
