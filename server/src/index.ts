@@ -7,8 +7,8 @@ const port = Number(process.env.PORT || 3333);
 
 async function main() {
   await ensureSeed();
-  app.listen(port, () => {
-    console.log(`Pixel Burguer API local em http://localhost:${port}`);
+  app.listen(port, "0.0.0.0", () => {
+    console.log(`Pixel Burguer ouvindo em 0.0.0.0:${port}`);
   });
 }
 
